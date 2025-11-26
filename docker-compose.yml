@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  scrap_api:
+    build: .
+    container_name: scrap_api
+    ports:
+      - "7002:8000"
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_DEBUG=true
+    volumes:
+      - .:/app
+    restart: unless-stopped
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
