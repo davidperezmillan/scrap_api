@@ -2,6 +2,7 @@ from scrapers.base_scraper import BaseScraper
 from typing import Dict, Any, List, Optional
 import logging
 import re
+from urllib.parse import unquote
 
 logger = logging.getLogger(__name__)
 
@@ -158,16 +159,22 @@ class BtdigScraper(BaseScraper):
                 if result_container:
                     result_container = result_container.find_parent("div")
 
-            # Extraer título
+            # Extraer título del magnet link primero (más confiable)
             title = None
-            if result_container:
-                torrent_name_div = result_container.find("div", class_="torrent_name")
-                if torrent_name_div:
-                    title_link = torrent_name_div.find("a")
-                    if title_link:
-                        title = self.extract_text(title_link).strip()
+            match = re.search(r'dn=([^&]+)', magnet_url)
+            if match:
+                title = unquote(match.group(1)).replace('+', ' ')
 
-            # Si no se encontró título, usar métodos alternativos
+            # Si no se pudo extraer del magnet, intentar del HTML
+            if not title:
+                if result_container:
+                    torrent_name_div = result_container.find("div", class_="torrent_name")
+                    if torrent_name_div:
+                        title_link = torrent_name_div.find("a")
+                        if title_link:
+                            title = self.extract_text(title_link).strip()
+
+            # Si aún no hay título, usar métodos alternativos
             if not title:
                 # Buscar en el contenedor del enlace
                 container = link.find_parent()
@@ -175,11 +182,11 @@ class BtdigScraper(BaseScraper):
                     title_elem = container if container else link
                     title = self.extract_text(title_elem).strip()
 
-                # Si aún no hay título válido, intentar extraer del magnet
+                # Si aún no hay título válido, intentar extraer del magnet (fallback)
                 if not title or title == magnet_url:
                     match = re.search(r'dn=([^&]+)', magnet_url)
                     if match:
-                        title = match.group(1).replace('+', ' ')
+                        title = unquote(match.group(1)).replace('+', ' ')
 
             # Extraer información adicional del contenedor
             files = None
